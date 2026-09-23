@@ -1,0 +1,1091 @@
+{
+  "info": {
+    "_postman_id": "e64aa593-ca7d-4bfe-90f6-651d2efb077d",
+    "name": "SimpleApi",
+    "description": "# SimpleApi\n\nCollection untuk `SimpleApi` (.NET 9 Web API + PostgreSQL, JWT auth, CRUD produk).\n\n## Source Code\n\nhttps://github.com/Asadell/simple-product-api\n\n## Cara pakai\n\n1. Import collection ini dan environment `SimpleApi - Local Dev`, lalu pilih environment.\n2. Isi `base_url` di environment:\n   - **Local**: `http://localhost:5250`\n   - **Production**: `https://product-api.himitpens.net`\n3. Klik **Runner** → **Start run**.\n\n## Format response\n\nSemua endpoint mengembalikan:\n```json\n{\n  \"success\": true,\n  \"message\": \"...\",\n  \"data\": { ... }\n}\n```\n\n## Alur Runner (urutan wajib)\n\n1. **Register** — buat user baru (`postman_<timestamp>`), simpan `access_token`\n2. **Login** — login pakai user tadi, refresh `access_token`\n3. **Create Product** — buat produk baru, simpan `product_id`\n4. **Get All Products** — ambil semua produk\n5. **Get Product By Id** — ambil produk yang baru dibuat\n6. **Update Product** — update produk tersebut\n7. **Delete Product** — hapus produk (cleanup)\n\nCollection aman dijalankan berulang kali karena username dan nama produk selalu unik per-run.\n\n## Swagger (Production)\n\nhttps://product-api.himitpens.net/swagger/index.html\n",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "56845145",
+    "_collection_link": "https://go.postman.co/collection/56845145-e64aa593-ca7d-4bfe-90f6-651d2efb077d?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "01 - Auth",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Username unik tiap run agar tidak bentrok (409).",
+                  "const username = 'postman_' + Date.now() + '_' + Math.floor(Math.random() * 1000);",
+                  "pm.environment.set('test_username', username);",
+                  "if (!pm.environment.get('test_password')) {",
+                  "  pm.environment.set('test_password', 'rahasia123');",
+                  "}",
+                  "console.log('[SimpleApi] Register sebagai ' + username);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let body;",
+                  "try { body = pm.response.json(); } catch (e) { body = null; }",
+                  "",
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "",
+                  "pm.test('Response wrapper: success=true', () => {",
+                  "  pm.expect(body.success).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test('Message: Registrasi berhasil', () => {",
+                  "  pm.expect(body.message).to.eql('Registrasi berhasil');",
+                  "});",
+                  "",
+                  "pm.test('data berisi accessToken dan username', () => {",
+                  "  pm.expect(body.data.accessToken).to.be.a('string').and.not.empty;",
+                  "  pm.expect(body.data.username).to.eql(pm.environment.get('test_username'));",
+                  "  pm.expect(body.data.expiresAt).to.be.a('string');",
+                  "});",
+                  "",
+                  "if (body && body.data && body.data.accessToken) {",
+                  "  pm.environment.set('access_token', body.data.accessToken);",
+                  "  console.log('[SimpleApi] access_token tersimpan dari Register');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{test_username}}\",\n  \"password\": \"{{test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Buat user baru. Username dibuat otomatis di pre-request script agar aman dijalankan berulang kali."
+          },
+          "response": [
+            {
+              "name": "Register",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"{{test_username}}\",\n  \"password\": \"{{test_password}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/auth/register",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "auth",
+                    "register"
+                  ]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": null,
+              "header": [
+                {
+                  "key": ":status",
+                  "value": 201
+                },
+                {
+                  "key": "date",
+                  "value": "Wed, 23 Sep 2026 14:29:29 GMT"
+                },
+                {
+                  "key": "content-type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "x-served-by",
+                  "value": "product-api.himitpens.net"
+                },
+                {
+                  "key": "cf-cache-status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "report-to",
+                  "value": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=nrN8bFd51g%2FVEH6pCWZ%2Fw6tkLt9z%2BpqccC80447s4bl9yqKyyvJYuIxqo4lvoqnidQqjHpq5k%2BI%2FKVt48TDk3rEC6FaYhsafdLiDDU0U1Ew7c%2BsSRQq%2Fq8Wk77iwH8ED4T%2Fs2puPncqRDz5L\"}]}"
+                },
+                {
+                  "key": "nel",
+                  "value": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}"
+                },
+                {
+                  "key": "cf-ray",
+                  "value": "a3fa3de81b5e8349-SIN"
+                },
+                {
+                  "key": "alt-svc",
+                  "value": "h3=\":443\"; ma=86400"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"success\": true,\n    \"message\": \"Registrasi berhasil\",\n    \"data\": {\n        \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjciLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoicG9zdG1hbl8xNzkwMTczNzY4NDQwXzY0MyIsImV4cCI6MTc5MDE3NzM2OSwiaXNzIjoiU2ltcGxlQXBpIiwiYXVkIjoiU2ltcGxlQXBpVXNlcnMifQ.BtTjYqoqjK5J6PVP4kF-z3D3lXrXLbAc0GrvXPxJq7k\",\n        \"expiresAt\": \"2026-09-23T15:29:29.8304859Z\",\n        \"username\": \"postman_1790173768440_643\"\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let body;",
+                  "try { body = pm.response.json(); } catch (e) { body = null; }",
+                  "",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('Response wrapper: success=true', () => {",
+                  "  pm.expect(body.success).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test('Message: Login berhasil', () => {",
+                  "  pm.expect(body.message).to.eql('Login berhasil');",
+                  "});",
+                  "",
+                  "pm.test('data berisi accessToken untuk user yang sama', () => {",
+                  "  pm.expect(body.data.accessToken).to.be.a('string').and.not.empty;",
+                  "  pm.expect(body.data.username).to.eql(pm.environment.get('test_username'));",
+                  "  pm.expect(new Date(body.data.expiresAt).getTime()).to.be.above(Date.now());",
+                  "});",
+                  "",
+                  "if (body && body.data && body.data.accessToken) {",
+                  "  pm.environment.set('access_token', body.data.accessToken);",
+                  "  console.log('[SimpleApi] access_token diperbarui dari Login');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{test_username}}\",\n  \"password\": \"{{test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Login dengan user hasil Register. Token diperbarui ke `access_token` dan dipakai otomatis oleh semua request Products."
+          },
+          "response": [
+            {
+              "name": "Login",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"{{test_username}}\",\n  \"password\": \"{{test_password}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/auth/login",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "auth",
+                    "login"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": null,
+              "header": [
+                {
+                  "key": ":status",
+                  "value": 200
+                },
+                {
+                  "key": "date",
+                  "value": "Wed, 23 Sep 2026 14:29:42 GMT"
+                },
+                {
+                  "key": "content-type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "x-served-by",
+                  "value": "product-api.himitpens.net"
+                },
+                {
+                  "key": "cf-cache-status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "report-to",
+                  "value": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=ku2gqkcZhMY%2F%2FuM%2B8GKNO3flXdeGZj1Dc4vgqbtjPsWXyXdVHPj3quLTAsHKO%2BHmvJyCxssJGKGCd8U%2F11tzo61vbCNjHSt8X0TqnLUTaHv%2B2SbiIiIbhBhVflKwx3eugsqtH7qJU3ItK7uU\"}]}"
+                },
+                {
+                  "key": "nel",
+                  "value": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}"
+                },
+                {
+                  "key": "content-encoding",
+                  "value": "br"
+                },
+                {
+                  "key": "cf-ray",
+                  "value": "a3fa3e382a7f8349-SIN"
+                },
+                {
+                  "key": "alt-svc",
+                  "value": "h3=\":443\"; ma=86400"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"success\": true,\n    \"message\": \"Login berhasil\",\n    \"data\": {\n        \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjciLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoicG9zdG1hbl8xNzkwMTczNzY4NDQwXzY0MyIsImV4cCI6MTc5MDE3NzM4MiwiaXNzIjoiU2ltcGxlQXBpIiwiYXVkIjoiU2ltcGxlQXBpVXNlcnMifQ.hbkul8yV1TElAlL7wSn2Fb46pKcvqXMZf0kFHhOwnFA\",\n        \"expiresAt\": \"2026-09-23T15:29:42.2763419Z\",\n        \"username\": \"postman_1790173768440_643\"\n    }\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Register user baru lalu Login. Jalankan lebih dulu sebelum folder Products."
+    },
+    {
+      "name": "02 - Products",
+      "item": [
+        {
+          "name": "Create Product",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Nama produk unik tiap run agar mudah dilacak.",
+                  "pm.environment.set('product_name', 'Produk Postman ' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let body;",
+                  "try { body = pm.response.json(); } catch (e) { body = null; }",
+                  "",
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "",
+                  "pm.test('Response wrapper: success=true', () => {",
+                  "  pm.expect(body.success).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test('Message: Produk berhasil dibuat', () => {",
+                  "  pm.expect(body.message).to.eql('Produk berhasil dibuat');",
+                  "});",
+                  "",
+                  "pm.test('data.name sesuai yang dikirim', () => {",
+                  "  pm.expect(body.data.name).to.eql(pm.environment.get('product_name'));",
+                  "});",
+                  "",
+                  "pm.test('data berisi field ProductResponse lengkap', () => {",
+                  "  pm.expect(body.data.id).to.be.a('number');",
+                  "  pm.expect(body.data.price).to.eql(150000);",
+                  "  pm.expect(body.data.stock).to.eql(20);",
+                  "  pm.expect(body.data.description).to.eql('Dibuat dari Postman');",
+                  "  pm.expect(body.data.createdAt).to.be.a('string');",
+                  "  pm.expect(body.data.updatedAt).to.be.a('string');",
+                  "});",
+                  "",
+                  "// product_id dipakai oleh Get By Id, Update, dan Delete.",
+                  "if (body && body.data && body.data.id) {",
+                  "  pm.environment.set('product_id', body.data.id);",
+                  "  console.log('[SimpleApi] product_id = ' + body.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{product_name}}\",\n  \"description\": \"Dibuat dari Postman\",\n  \"price\": 150000,\n  \"stock\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/products",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "products"
+              ]
+            },
+            "description": "Buat produk baru. `product_id` disimpan otomatis ke environment untuk request berikutnya."
+          },
+          "response": [
+            {
+              "name": "Create Product",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"{{product_name}}\",\n  \"description\": \"Dibuat dari Postman\",\n  \"price\": 150000,\n  \"stock\": 20\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/products",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "products"
+                  ]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": null,
+              "header": [
+                {
+                  "key": ":status",
+                  "value": 201
+                },
+                {
+                  "key": "date",
+                  "value": "Wed, 23 Sep 2026 14:29:55 GMT"
+                },
+                {
+                  "key": "content-type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "location",
+                  "value": "http://product-api.himitpens.net/api/products/9"
+                },
+                {
+                  "key": "server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "x-served-by",
+                  "value": "product-api.himitpens.net"
+                },
+                {
+                  "key": "cf-cache-status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "report-to",
+                  "value": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=%2BZpZ4mjpprSR%2BpOzdFFfQTr%2F3d3UgJLN45Ao8P7UVVAaknHJm9MVajtbXpUqdxGI4%2BzhlH3GMzhqPa43JVJLWndtcth%2B3B1EUuov%2BpjdH8clNRLSy2GBxbfzgcFXQaE8vffwIVcJSLT5iyiA\"}]}"
+                },
+                {
+                  "key": "nel",
+                  "value": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}"
+                },
+                {
+                  "key": "cf-ray",
+                  "value": "a3fa3e8d2f1c8349-SIN"
+                },
+                {
+                  "key": "alt-svc",
+                  "value": "h3=\":443\"; ma=86400"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"success\": true,\n    \"message\": \"Produk berhasil dibuat\",\n    \"data\": {\n        \"id\": 9,\n        \"name\": \"Produk Postman 1790173795350\",\n        \"description\": \"Dibuat dari Postman\",\n        \"price\": 150000,\n        \"stock\": 20,\n        \"createdAt\": \"2026-09-23T14:29:55.4465979Z\",\n        \"updatedAt\": \"2026-09-23T14:29:55.4465979Z\"\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get All Products",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let body;",
+                  "try { body = pm.response.json(); } catch (e) { body = null; }",
+                  "",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('Response wrapper: success=true', () => {",
+                  "  pm.expect(body.success).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test('Message tidak kosong', () => {",
+                  "  pm.expect(body.message).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "pm.test('data berupa array dan ada minimal 1 produk', () => {",
+                  "  pm.expect(body.data).to.be.an('array');",
+                  "  pm.expect(body.data.length).to.be.above(0);",
+                  "});",
+                  "",
+                  "pm.test('data mengandung produk yang baru dibuat', () => {",
+                  "  const productId = Number(pm.environment.get('product_id'));",
+                  "  const found = body.data.find(p => p.id === productId);",
+                  "  pm.expect(found, 'produk dengan product_id ditemukan').to.not.be.undefined;",
+                  "  pm.expect(found.name).to.eql(pm.environment.get('product_name'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/products",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "products"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Get All Products",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/products",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "products"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": null,
+              "header": [
+                {
+                  "key": ":status",
+                  "value": 200
+                },
+                {
+                  "key": "date",
+                  "value": "Wed, 23 Sep 2026 14:30:03 GMT"
+                },
+                {
+                  "key": "content-type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "x-served-by",
+                  "value": "product-api.himitpens.net"
+                },
+                {
+                  "key": "cf-cache-status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "report-to",
+                  "value": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=U3jGefwUCO3PVXp0WqsS9wdT4s78hnjsbFJ2YSO6PhUZZfOttc3ynXzostYB8GfvW5D8rXFG7Qktz%2F8VyXQcDFgfwO0mGk7RY9uSn3MwTUiQi4dylVFjIz2DeXxZ0kB9IO5D4%2FsJrPodUKDl\"}]}"
+                },
+                {
+                  "key": "nel",
+                  "value": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}"
+                },
+                {
+                  "key": "content-encoding",
+                  "value": "br"
+                },
+                {
+                  "key": "cf-ray",
+                  "value": "a3fa3ebe293d8349-SIN"
+                },
+                {
+                  "key": "alt-svc",
+                  "value": "h3=\":443\"; ma=86400"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"success\": true,\n    \"message\": \"Data produk berhasil diambil\",\n    \"data\": [\n        {\n            \"id\": 1,\n            \"name\": \"Laptop Asus ROG\",\n            \"description\": \"Gaming laptop 15 inch, RTX 4060\",\n            \"price\": 18500000,\n            \"stock\": 10,\n            \"createdAt\": \"2026-09-23T13:08:26.079319Z\",\n            \"updatedAt\": \"2026-09-23T13:08:26.07932Z\"\n        },\n        {\n            \"id\": 2,\n            \"name\": \"Mouse Logitech G502\",\n            \"description\": \"Wireless gaming mouse, 25K DPI\",\n            \"price\": 850000,\n            \"stock\": 50,\n            \"createdAt\": \"2026-09-23T13:08:26.079384Z\",\n            \"updatedAt\": \"2026-09-23T13:08:26.079384Z\"\n        },\n        {\n            \"id\": 3,\n            \"name\": \"Keyboard Mechanical Keychron\",\n            \"description\": \"TKL layout, red switch\",\n            \"price\": 1250000,\n            \"stock\": 30,\n            \"createdAt\": \"2026-09-23T13:08:26.079385Z\",\n            \"updatedAt\": \"2026-09-23T13:08:26.079385Z\"\n        },\n        {\n            \"id\": 4,\n            \"name\": \"Monitor LG 27\\\" 144Hz\",\n            \"description\": \"IPS panel, FHD, 1ms response time\",\n            \"price\": 4200000,\n            \"stock\": 15,\n            \"createdAt\": \"2026-09-23T13:08:26.079385Z\",\n            \"updatedAt\": \"2026-09-23T13:08:26.079385Z\"\n        },\n        {\n            \"id\": 5,\n            \"name\": \"Headset HyperX Cloud II\",\n            \"description\": \"7.1 surround sound, memory foam\",\n            \"price\": 1100000,\n            \"stock\": 25,\n            \"createdAt\": \"2026-09-23T13:08:26.079385Z\",\n            \"updatedAt\": \"2026-09-23T13:08:26.079385Z\"\n        },\n        {\n            \"id\": 9,\n            \"name\": \"Produk Postman 1790173795350\",\n            \"description\": \"Dibuat dari Postman\",\n            \"price\": 150000,\n            \"stock\": 20,\n            \"createdAt\": \"2026-09-23T14:29:55.446597Z\",\n            \"updatedAt\": \"2026-09-23T14:29:55.446597Z\"\n        }\n    ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Product By Id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let body;",
+                  "try { body = pm.response.json(); } catch (e) { body = null; }",
+                  "",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('Response wrapper: success=true', () => {",
+                  "  pm.expect(body.success).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test('Message tidak kosong', () => {",
+                  "  pm.expect(body.message).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "pm.test('data.id sesuai product_id', () => {",
+                  "  pm.expect(body.data.id).to.eql(Number(pm.environment.get('product_id')));",
+                  "});",
+                  "",
+                  "pm.test('data.name sesuai hasil Create', () => {",
+                  "  pm.expect(body.data.name).to.eql(pm.environment.get('product_name'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/products/{{product_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "{{product_id}}"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Get Product By Id",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/products/{{product_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "products",
+                    "{{product_id}}"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": null,
+              "header": [
+                {
+                  "key": ":status",
+                  "value": 200
+                },
+                {
+                  "key": "date",
+                  "value": "Wed, 23 Sep 2026 14:30:09 GMT"
+                },
+                {
+                  "key": "content-type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "x-served-by",
+                  "value": "product-api.himitpens.net"
+                },
+                {
+                  "key": "cf-cache-status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "report-to",
+                  "value": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=yeWRVp%2FlLIzdki4qQt%2BSdQu47NgZ8N%2BBarrVyoTYvZYNNzCpMkze1s1CR3FpciCzHa%2FuM9bCnImJHhHOzPkNpSgt8doW%2Bzbp2K7yWdohInzWUmxlQi5B8F5gPeynx9y8ThTDGJaVKrpg6y8K\"}]}"
+                },
+                {
+                  "key": "nel",
+                  "value": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}"
+                },
+                {
+                  "key": "content-encoding",
+                  "value": "br"
+                },
+                {
+                  "key": "cf-ray",
+                  "value": "a3fa3ee20f578349-SIN"
+                },
+                {
+                  "key": "alt-svc",
+                  "value": "h3=\":443\"; ma=86400"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"success\": true,\n    \"message\": \"Data produk berhasil diambil\",\n    \"data\": {\n        \"id\": 9,\n        \"name\": \"Produk Postman 1790173795350\",\n        \"description\": \"Dibuat dari Postman\",\n        \"price\": 150000,\n        \"stock\": 20,\n        \"createdAt\": \"2026-09-23T14:29:55.446597Z\",\n        \"updatedAt\": \"2026-09-23T14:29:55.446597Z\"\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let body;",
+                  "try { body = pm.response.json(); } catch (e) { body = null; }",
+                  "",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('Response wrapper: success=true', () => {",
+                  "  pm.expect(body.success).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test('Message: Produk berhasil diupdate', () => {",
+                  "  pm.expect(body.message).to.eql('Produk berhasil diupdate');",
+                  "});",
+                  "",
+                  "pm.test('data berhasil diupdate', () => {",
+                  "  pm.expect(body.data.id).to.eql(Number(pm.environment.get('product_id')));",
+                  "  pm.expect(body.data.name).to.eql(pm.environment.get('product_name') + ' (updated)');",
+                  "  pm.expect(body.data.price).to.eql(175000);",
+                  "  pm.expect(body.data.stock).to.eql(15);",
+                  "  pm.expect(body.data.description).to.eql('Sudah diupdate dari Postman');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{product_name}} (updated)\",\n  \"description\": \"Sudah diupdate dari Postman\",\n  \"price\": 175000,\n  \"stock\": 15\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/products/{{product_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "{{product_id}}"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Update Product",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"{{product_name}} (updated)\",\n  \"description\": \"Sudah diupdate dari Postman\",\n  \"price\": 175000,\n  \"stock\": 15\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/products/{{product_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "products",
+                    "{{product_id}}"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": null,
+              "header": [
+                {
+                  "key": ":status",
+                  "value": 200
+                },
+                {
+                  "key": "date",
+                  "value": "Wed, 23 Sep 2026 14:30:16 GMT"
+                },
+                {
+                  "key": "content-type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "x-served-by",
+                  "value": "product-api.himitpens.net"
+                },
+                {
+                  "key": "cf-cache-status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "report-to",
+                  "value": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=8HyzVvbAHaFluI8vGrCa%2FkEa0qUMNGgfXRDrBrJ4SZXXC4ijzygS0Jkab1V4LwKikD8ZNayF0Dcs9DPWyws4vwnMOCA5O%2BIUwA0v6i%2BUEr9UBqyKiMAVhEz1daO1ghHFZZUxTVKxqbB6MQRF\"}]}"
+                },
+                {
+                  "key": "nel",
+                  "value": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}"
+                },
+                {
+                  "key": "content-encoding",
+                  "value": "br"
+                },
+                {
+                  "key": "cf-ray",
+                  "value": "a3fa3f0dcc148349-SIN"
+                },
+                {
+                  "key": "alt-svc",
+                  "value": "h3=\":443\"; ma=86400"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"success\": true,\n    \"message\": \"Produk berhasil diupdate\",\n    \"data\": {\n        \"id\": 9,\n        \"name\": \"Produk Postman 1790173795350 (updated)\",\n        \"description\": \"Sudah diupdate dari Postman\",\n        \"price\": 175000,\n        \"stock\": 15,\n        \"createdAt\": \"2026-09-23T14:29:55.446597Z\",\n        \"updatedAt\": \"2026-09-23T14:30:15.9893646Z\"\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let body;",
+                  "try { body = pm.response.json(); } catch (e) { body = null; }",
+                  "",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('Response wrapper: success=true', () => {",
+                  "  pm.expect(body.success).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test('Message menyebut id produk yang dihapus', () => {",
+                  "  const productId = pm.environment.get('product_id');",
+                  "  pm.expect(body.message).to.include(String(productId));",
+                  "});",
+                  "",
+                  "pm.test('data null setelah delete', () => {",
+                  "  pm.expect(body.data).to.be.null;",
+                  "});",
+                  "",
+                  "// Cleanup variabel setelah delete.",
+                  "pm.environment.unset('product_id');",
+                  "pm.environment.unset('product_name');",
+                  "console.log('[SimpleApi] Produk dihapus, cleanup selesai.');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/products/{{product_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "{{product_id}}"
+              ]
+            },
+            "description": "Hapus produk yang dibuat di Create Product. Setelah ini `product_id` dan `product_name` otomatis dihapus dari environment."
+          },
+          "response": [
+            {
+              "name": "Delete Product",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/products/{{product_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "products",
+                    "{{product_id}}"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": null,
+              "header": [
+                {
+                  "key": ":status",
+                  "value": 200
+                },
+                {
+                  "key": "date",
+                  "value": "Wed, 23 Sep 2026 14:30:22 GMT"
+                },
+                {
+                  "key": "content-type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "x-served-by",
+                  "value": "product-api.himitpens.net"
+                },
+                {
+                  "key": "cf-cache-status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "report-to",
+                  "value": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=Ke4q59RUDiIYr1N45EJBbtza088sXjD%2FrFzPtbTnygOY0o5D4K4rou9nJ%2BFr4%2BOIkeDwXA4r04yjRidtUW7p%2B8j3luw2Xcsk%2F42Aw62iIWqCGD2ar6biEQU0EVqVeVOCHuA8qmTiVydIPFlB\"}]}"
+                },
+                {
+                  "key": "nel",
+                  "value": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}"
+                },
+                {
+                  "key": "content-encoding",
+                  "value": "br"
+                },
+                {
+                  "key": "cf-ray",
+                  "value": "a3fa3f34fcad8349-SIN"
+                },
+                {
+                  "key": "alt-svc",
+                  "value": "h3=\":443\"; ma=86400"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"success\": true,\n    \"message\": \"Produk dengan id 9 berhasil dihapus.\",\n    \"data\": null\n}"
+            }
+          ]
+        }
+      ],
+      "description": "CRUD produk. Semua request memakai Bearer `{{access_token}}` dari level collection."
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  }
+}
